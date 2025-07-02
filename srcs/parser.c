@@ -7,7 +7,6 @@ static void	print_usage(void)
 	printf("  -? : display this help and exit\n");
 }
 
-// TODO: attention leak !;
 int	parse_ping(int argc, char **argv, t_ping *ping)
 {
 	int	i;
@@ -18,7 +17,7 @@ int	parse_ping(int argc, char **argv, t_ping *ping)
 	if (argc == 1)
 	{
 		print_usage();
-		exit(64);
+		exit(1);
 	}
 	while (i < argc)
 	{
@@ -27,12 +26,14 @@ int	parse_ping(int argc, char **argv, t_ping *ping)
 		else if (strcmp(argv[i], "-?") == 0)
 		{
 			print_usage();
+			free_ping(ping);
 			exit(0);
 		}
 		else if (argv[i][0] == '-')
 		{
 			printf("Unknown option: %s\n", argv[i]);
 			print_usage();
+			free_ping(ping);
 			exit(0);
 		}
 		else if (!is_target)
@@ -44,6 +45,7 @@ int	parse_ping(int argc, char **argv, t_ping *ping)
 		{
 			printf("Too many arguments\n");
 			print_usage();
+			free_ping(ping);
 			return (1);
 		}
 		i++;
@@ -57,18 +59,19 @@ int	resolve_target(t_ping *ping)
 	struct in_addr	*addr;
 
 	host = gethostbyname(ping->target);
-	// TODO: attention leak !;
 	if (!host)
 	{
 		fprintf(stderr, "ping: cannot resolve: %s: unknown host\n",
 				ping->target);
-		exit(68);
+		free_ping(ping);
+		exit(2);
 	}
 	addr = (struct in_addr *)host->h_addr_list[0];
 	ping->ip_str = strdup(inet_ntoa(*addr));
 	if (!ping->ip_str)
 	{
 		fprintf(stderr, "ping: memory allocation failed\n");
+		free_ping(ping);
 		exit(1);
 	}
 	return (0);
