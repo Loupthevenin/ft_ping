@@ -8,18 +8,8 @@ static void	init_ping(t_ping *ping)
 	ping->sockfd = 0;
 	ping->pid = getpid();
 	ping->sequence = 0;
-}
-
-static int	create_socket(t_ping *ping)
-{
-	ping->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (!ping->sockfd)
-	{
-		perror("socket");
-		free_ping(ping);
-		exit(1);
-	}
-	return (0);
+	ping->sent_packets = 0;
+	ping->received_packets = 0;
 }
 
 static uint16_t	checksum(void *data, int len)
@@ -60,6 +50,7 @@ static int	send_ping(t_ping *ping)
 	init_icmp(&icmp, ping->sequence++, ping->pid);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(ping->ip_str);
+	gettimeofday(&ping->send_time, NULL);
 	sent = sendto(ping->sockfd, &icmp, sizeof(icmp), 0,
 			(struct sockaddr *)&addr, sizeof(addr));
 	if (sent < 0)
@@ -68,9 +59,11 @@ static int	send_ping(t_ping *ping)
 		free_ping(ping);
 		return (1);
 	}
+	ping->sent_packets++;
 	return (0);
 }
 
+// TODO: calculate time;
 static int	receive_ping(t_ping *ping)
 {
 	char				buffer[PACKET_SIZE];
@@ -102,9 +95,11 @@ static int	receive_ping(t_ping *ping)
 		free_ping(ping);
 		return (1);
 	}
+	// TODO: add ms print;
 	printf("%zd bytes from %s: icmp_seq=%d ttl=%d\n", bytes - ip_header_len,
 			inet_ntoa(from.sin_addr), ntohs(icmp_hdr->sequence),
 			ip_hdr->ip_ttl);
+	ping->received_packets++;
 	return (0);
 }
 
@@ -126,6 +121,8 @@ int	main(int argc, char **argv)
 	t_ping	ping;
 
 	init_ping(&ping);
+	set_ping_instance(&ping);
+	signal(SIGINT, handle_sigint);
 	if (parse_ping(argc, argv, &ping) != 0)
 		return (1);
 	if (resolve_target(&ping) != 0)

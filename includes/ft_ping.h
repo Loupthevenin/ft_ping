@@ -6,6 +6,7 @@
 # include "netinet/in.h"
 # include "netinet/ip.h"
 # include "netinet/ip_icmp.h"
+# include "signal.h"
 # include "stdio.h"
 # include "stdlib.h"
 # include "string.h"
@@ -17,30 +18,38 @@
 
 typedef struct s_ping
 {
-	char		*target;
-	char		*ip_str;
-	int			verbose;
-	int			sockfd;
-	int			pid;
-	int			sequence;
-}				t_ping;
+	char			*target;
+	char			*ip_str;
+	int				verbose;
+	int				sockfd;
+	int				pid;
+	int				sequence;
+	struct timeval	send_time;
+	int				sent_packets;
+	int				received_packets;
+}					t_ping;
 
 typedef struct s_icmp_echo
 {
-	uint8_t		type;
-	uint8_t		code;
-	uint16_t	checksum;
-	uint16_t	id;
-	uint16_t	sequence;
-}				t_icmp_echo;
+	uint8_t			type;
+	uint8_t			code;
+	uint16_t		checksum;
+	uint16_t		id;
+	uint16_t		sequence;
+}					t_icmp_echo;
 
-int				parse_ping(int argc, char **argv, t_ping *ping);
-int				resolve_target(t_ping *ping);
+int					parse_ping(int argc, char **argv, t_ping *ping);
+int					resolve_target(t_ping *ping);
+
+// Signal
+void				set_ping_instance(t_ping *ping);
+void				handle_sigint(int sig);
 
 // Utils;
-void			free_ping(t_ping *ping);
+int					create_socket(t_ping *ping);
+void				free_ping(t_ping *ping);
 
 // Debug;
-void			print_ping(t_ping *ping);
+void				print_ping(t_ping *ping);
 
 #endif
