@@ -1,38 +1,13 @@
 #include "../includes/ft_ping.h"
 
-static void	print_ping(t_ping *ping)
-{
-	printf("Print_ping: \n");
-	printf("  target: %s\n", ping->target);
-	printf("  ip_str: %s\n", ping->ip_str);
-	printf("  verbose: %d\n", ping->verbose);
-	printf("  sockfd: %d\n", ping->sockfd);
-	printf("  pid: %d\n", ping->pid);
-	printf("  sequence: %d\n", ping->sequence);
-}
-
 static void	init_ping(t_ping *ping)
 {
 	ping->target = NULL;
 	ping->ip_str = NULL;
 	ping->verbose = 0;
 	ping->sockfd = 0;
-	ping->pid = 0;
+	ping->pid = getpid();
 	ping->sequence = 0;
-}
-
-void	free_ping(t_ping *ping)
-{
-	if (ping->target)
-	{
-		free(ping->target);
-		ping->target = NULL;
-	}
-	if (ping->ip_str)
-	{
-		free(ping->ip_str);
-		ping->ip_str = NULL;
-	}
 }
 
 static int	create_socket(t_ping *ping)
@@ -98,7 +73,51 @@ static int	send_ping(t_ping *ping)
 
 static int	receive_ping(t_ping *ping)
 {
-	(void)ping;
+	char				buffer[PACKET_SIZE];
+	ssize_t				bytes;
+	struct sockaddr_in	from;
+	socklen_t			from_len;
+	struct ip			*ip_hdr;
+	t_icmp_echo			*icmp_hdr;
+	int					ip_header_len;
+
+	from_len = sizeof(from);
+	bytes = recvfrom(ping->sockfd, buffer, sizeof(buffer), 0,
+			(struct sockaddr *)&from, &from_len);
+	if (bytes < 0)
+	{
+		perror("recvfrom");
+		free_ping(ping);
+		return (1);
+	}
+	// Lire l'entête IP
+	ip_hdr = (struct ip *)buffer;
+	ip_header_len = ip_hdr->ip_hl << 2;
+	// Lire l'entête ICMP
+	icmp_hdr = (t_icmp_echo *)(buffer + ip_header_len);
+	if (icmp_hdr->type != 0 || icmp_hdr->id != htons(ping->pid))
+	{
+		if (ping->verbose)
+			printf("Received non-reply or wrong id\n");
+		free_ping(ping);
+		return (1);
+	}
+	printf("%zd bytes from %s: icmp_seq=%d ttl=%d\n", bytes - ip_header_len,
+			inet_ntoa(from.sin_addr), ntohs(icmp_hdr->sequence),
+			ip_hdr->ip_ttl);
+	return (0);
+}
+
+static int	run_ping_loop(t_ping *ping)
+{
+	while (1)
+	{
+		if (send_ping(ping) != 0)
+			return (1);
+		if (receive_ping(ping) != 0)
+			return (1);
+		sleep(1);
+	}
 	return (0);
 }
 
@@ -114,10 +133,7 @@ int	main(int argc, char **argv)
 	print_ping(&ping);
 	if (create_socket(&ping) != 0)
 		return (1);
-	// TODO: LOOP HERE;
-	if (send_ping(&ping) != 0)
-		return (1);
-	if (receive_ping(&ping) != 0)
+	if (run_ping_loop(&ping) != 0)
 		return (1);
 	return (0);
 }

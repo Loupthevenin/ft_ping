@@ -13,6 +13,8 @@
 # include "sys/time.h"
 # include "unistd.h"
 
+# define PACKET_SIZE 1024
+
 typedef struct s_ping
 {
 	char		*target;
@@ -37,5 +39,8 @@ int				resolve_target(t_ping *ping);
 
 // Utils;
 void			free_ping(t_ping *ping);
+
+// Debug;
+void			print_ping(t_ping *ping);
 
 #endif
