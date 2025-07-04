@@ -7,9 +7,13 @@ static void	init_ping(t_ping *ping)
 	ping->verbose = 0;
 	ping->sockfd = 0;
 	ping->pid = getpid();
-	ping->sequence = 0;
+	ping->sequence = 1;
 	ping->sent_packets = 0;
 	ping->received_packets = 0;
+	gettimeofday(&ping->start_time, NULL);
+	ping->min_rtt = -1.0;
+	ping->max_rtt = 0.0;
+	ping->total_rtt = 0.0;
 }
 
 static uint16_t	checksum(void *data, int len)
@@ -63,7 +67,6 @@ static int	send_ping(t_ping *ping)
 	return (0);
 }
 
-// TODO: calculate time;
 static int	receive_ping(t_ping *ping)
 {
 	char				buffer[PACKET_SIZE];
@@ -73,6 +76,8 @@ static int	receive_ping(t_ping *ping)
 	struct ip			*ip_hdr;
 	t_icmp_echo			*icmp_hdr;
 	int					ip_header_len;
+	struct timeval		recv_time;
+	double				rtt;
 
 	from_len = sizeof(from);
 	bytes = recvfrom(ping->sockfd, buffer, sizeof(buffer), 0,
@@ -95,10 +100,16 @@ static int	receive_ping(t_ping *ping)
 		free_ping(ping);
 		return (1);
 	}
-	// TODO: add ms print;
-	printf("%zd bytes from %s: icmp_seq=%d ttl=%d\n", bytes - ip_header_len,
-			inet_ntoa(from.sin_addr), ntohs(icmp_hdr->sequence),
-			ip_hdr->ip_ttl);
+	gettimeofday(&recv_time, NULL);
+	rtt = get_rtt_ms(&ping->send_time, &recv_time);
+	if (ping->min_rtt < 0 || rtt < ping->min_rtt)
+		ping->min_rtt = rtt;
+	if (rtt > ping->max_rtt)
+		ping->max_rtt = rtt;
+	ping->total_rtt += rtt;
+	printf("%zd bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", bytes
+			- ip_header_len, inet_ntoa(from.sin_addr),
+			ntohs(icmp_hdr->sequence), ip_hdr->ip_ttl, rtt);
 	ping->received_packets++;
 	return (0);
 }
@@ -132,5 +143,6 @@ int	main(int argc, char **argv)
 		return (1);
 	if (run_ping_loop(&ping) != 0)
 		return (1);
+	free_ping(&ping);
 	return (0);
 }

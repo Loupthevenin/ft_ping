@@ -12,6 +12,16 @@ int	create_socket(t_ping *ping)
 	return (0);
 }
 
+double	get_rtt_ms(struct timeval *start, struct timeval *end)
+{
+	long	sec;
+	long	usec;
+
+	sec = end->tv_sec - start->tv_sec;
+	usec = end->tv_usec - start->tv_usec;
+	return (sec * 1000.0) + (usec / 1000.0);
+}
+
 void	free_ping(t_ping *ping)
 {
 	if (ping->target)

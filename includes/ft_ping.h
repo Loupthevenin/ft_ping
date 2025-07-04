@@ -25,6 +25,10 @@ typedef struct s_ping
 	int				pid;
 	int				sequence;
 	struct timeval	send_time;
+	struct timeval	start_time;
+	double			min_rtt;
+	double			max_rtt;
+	double			total_rtt;
 	int				sent_packets;
 	int				received_packets;
 }					t_ping;
@@ -47,6 +51,7 @@ void				handle_sigint(int sig);
 
 // Utils;
 int					create_socket(t_ping *ping);
+double				get_rtt_ms(struct timeval *start, struct timeval *end);
 void				free_ping(t_ping *ping);
 
 // Debug;
