@@ -53,6 +53,7 @@ int					resolve_target(t_ping *ping);
 
 // Signal
 void				set_ping_instance(t_ping *ping);
+void				print_sigint(t_ping *ping);
 void				handle_sigint(int sig);
 
 // Utils;

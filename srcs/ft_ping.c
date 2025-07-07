@@ -70,6 +70,7 @@ static int	send_ping(t_ping *ping)
 	for (int i = 0; i < ping->packet_size; i++)
 		packet[sizeof(t_icmp_echo) + i] = 'A' + (i % 26);
 	addr.sin_family = AF_INET;
+	addr.sin_port = 0;
 	addr.sin_addr.s_addr = inet_addr(ping->ip_str);
 	gettimeofday(&ping->send_time, NULL);
 	sent = sendto(ping->sockfd, packet, packet_len, 0, (struct sockaddr *)&addr,
@@ -146,8 +147,10 @@ static int	run_ping_loop(t_ping *ping)
 			return (1);
 		receive_ping(ping);
 		ping->current_count++;
-		sleep(1);
+		if (ping->max_count == 0 || ping->current_count < ping->max_count)
+			sleep(1);
 	}
+	print_sigint(ping);
 	return (0);
 }
 
@@ -162,7 +165,6 @@ int	main(int argc, char **argv)
 		return (1);
 	if (resolve_target(&ping) != 0)
 		return (1);
-	print_ping(&ping);
 	if (create_socket(&ping) != 0)
 		return (1);
 	if (run_ping_loop(&ping) != 0)

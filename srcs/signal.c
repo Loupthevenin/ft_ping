@@ -14,7 +14,7 @@ void	set_ping_instance(t_ping *ping)
 	get_ping_instance(ping);
 }
 
-static void	print_sigint(t_ping *ping)
+void	print_sigint(t_ping *ping)
 {
 	double			loss;
 	double			total_time_ms;
@@ -28,7 +28,7 @@ static void	print_sigint(t_ping *ping)
 	gettimeofday(&end_time, NULL);
 	total_time_ms = get_rtt_ms(&ping->start_time, &end_time);
 	printf("\n--- %s ping statistics ---\n", ping->target);
-	printf("%d packets transmitted, %d received, %.1f%% packet loss time "
+	printf("%d packets transmitted, %d received, %.1f%% packet loss, time "
 			"%.0fms\n",
 			ping->sent_packets,
 			ping->received_packets,
