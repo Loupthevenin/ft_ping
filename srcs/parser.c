@@ -7,13 +7,28 @@ static void	print_usage(void)
 	printf("  -? : display this help and exit\n");
 }
 
+static int	safe_str_to_int(char *str, int *result)
+{
+	char	*endptr;
+	long	val;
+
+	if (!str || *str == '\0')
+		return (0);
+	for (int i = 0; str[i]; i++)
+		if (!isdigit((unsigned char)str[i]))
+			return (0);
+	val = strtol(str, &endptr, 10);
+	if (*endptr != '\0' || val > INT_MAX || val < 0)
+		return (0);
+	*result = (int)val;
+	return (1);
+}
+
 int	parse_ping(int argc, char **argv, t_ping *ping)
 {
 	int	i;
-	int	is_target;
 
 	i = 1;
-	is_target = 0;
 	if (argc == 1)
 	{
 		print_usage();
@@ -21,34 +36,80 @@ int	parse_ping(int argc, char **argv, t_ping *ping)
 	}
 	while (i < argc)
 	{
-		if (strcmp(argv[i], "-v") == 0)
+		if (!strcmp(argv[i], "-v"))
 			ping->verbose = 1;
-		else if (strcmp(argv[i], "-?") == 0)
+		else if (!strcmp(argv[i], "-?"))
 		{
 			print_usage();
 			free_ping(ping);
 			exit(0);
+		}
+		else if (!strcmp(argv[i], "-c"))
+		{
+			if (++i >= argc || !isdigit(argv[i][0]))
+			{
+				fprintf(stderr, "Error: -c requires a number\n");
+				free_ping(ping);
+				exit(1);
+			}
+			if (!safe_str_to_int(argv[i], &ping->max_count))
+			{
+				fprintf(stderr, "Error: invalid value for"
+								"-c (must be a positive integer <= %d)\n",
+						INT_MAX);
+				free_ping(ping);
+				exit(1);
+			}
+		}
+		else if (!strcmp(argv[i], "-s"))
+		{
+			if (++i >= argc || !isdigit(argv[i][0]))
+			{
+				fprintf(stderr, "Error: -c requires a number\n");
+				free_ping(ping);
+				exit(1);
+			}
+			if (!safe_str_to_int(argv[i], &ping->packet_size))
+			{
+				fprintf(stderr, "Error: invalid value for"
+								"-s (must be a positive integer <= %d)\n",
+						INT_MAX);
+				free_ping(ping);
+				exit(1);
+			}
+			if (ping->packet_size < 0 || ping->packet_size > PACKET_SIZE)
+			{
+				fprintf(stderr, "Error: invalid packet size\n");
+				free_ping(ping);
+				exit(1);
+			}
 		}
 		else if (argv[i][0] == '-')
 		{
 			printf("Unknown option: %s\n", argv[i]);
 			print_usage();
 			free_ping(ping);
-			exit(0);
-		}
-		else if (!is_target)
-		{
-			ping->target = strdup(argv[i]);
-			is_target = 1;
+			exit(2);
 		}
 		else
 		{
-			printf("Too many arguments\n");
-			print_usage();
-			free_ping(ping);
-			return (1);
+			if (ping->target)
+			{
+				fprintf(stderr, "Error: Multiple destinations provided.\n");
+				print_usage();
+				free_ping(ping);
+				exit(1);
+			}
+			ping->target = strdup(argv[i]);
 		}
 		i++;
+	}
+	if (!ping->target)
+	{
+		fprintf(stderr, "Error: No destination provided.\n");
+		print_usage();
+		free_ping(ping);
+		exit(1);
 	}
 	return (0);
 }

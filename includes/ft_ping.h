@@ -2,6 +2,9 @@
 # define FT_PING_H
 
 # include "arpa/inet.h"
+# include "ctype.h"
+# include "errno.h"
+# include "limits.h"
 # include "netdb.h"
 # include "netinet/in.h"
 # include "netinet/ip.h"
@@ -14,7 +17,7 @@
 # include "sys/time.h"
 # include "unistd.h"
 
-# define PACKET_SIZE 1024
+# define PACKET_SIZE 1500
 
 typedef struct s_ping
 {
@@ -31,6 +34,9 @@ typedef struct s_ping
 	double			total_rtt;
 	int				sent_packets;
 	int				received_packets;
+	int				packet_size;
+	int				max_count;
+	int				current_count;
 }					t_ping;
 
 typedef struct s_icmp_echo

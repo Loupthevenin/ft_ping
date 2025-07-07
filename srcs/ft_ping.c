@@ -14,6 +14,9 @@ static void	init_ping(t_ping *ping)
 	ping->min_rtt = -1.0;
 	ping->max_rtt = 0.0;
 	ping->total_rtt = 0.0;
+	ping->packet_size = 64;
+	ping->max_count = 0;
+	ping->current_count = 0;
 }
 
 static uint16_t	checksum(void *data, int len)
@@ -48,15 +51,30 @@ static void	init_icmp(t_icmp_echo *icmp, int seq, int pid)
 static int	send_ping(t_ping *ping)
 {
 	ssize_t				sent;
-	t_icmp_echo			icmp;
+	t_icmp_echo			*icmp;
 	struct sockaddr_in	addr;
+	size_t				packet_len;
+	uint8_t				*packet;
 
-	init_icmp(&icmp, ping->sequence++, ping->pid);
+	packet_len = sizeof(t_icmp_echo) + ping->packet_size;
+	packet = malloc(packet_len);
+	if (!packet)
+	{
+		perror("malloc");
+		free_ping(ping);
+		return (1);
+	}
+	memset(packet, 0, packet_len);
+	icmp = (t_icmp_echo *)packet;
+	init_icmp(icmp, ping->sequence++, ping->pid);
+	for (int i = 0; i < ping->packet_size; i++)
+		packet[sizeof(t_icmp_echo) + i] = 'A' + (i % 26);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(ping->ip_str);
 	gettimeofday(&ping->send_time, NULL);
-	sent = sendto(ping->sockfd, &icmp, sizeof(icmp), 0,
-			(struct sockaddr *)&addr, sizeof(addr));
+	sent = sendto(ping->sockfd, packet, packet_len, 0, (struct sockaddr *)&addr,
+			sizeof(addr));
+	free(packet);
 	if (sent < 0)
 	{
 		perror("sendto");
@@ -93,12 +111,18 @@ static int	receive_ping(t_ping *ping)
 	ip_header_len = ip_hdr->ip_hl << 2;
 	// Lire l'entête ICMP
 	icmp_hdr = (t_icmp_echo *)(buffer + ip_header_len);
-	if (icmp_hdr->type != 0 || icmp_hdr->id != htons(ping->pid))
+	if (icmp_hdr->type != 0)
 	{
 		if (ping->verbose)
-			printf("Received non-reply or wrong id\n");
-		free_ping(ping);
-		return (1);
+		{
+			if (icmp_hdr->type != 0)
+				printf("Received non-echo-reply (type=%d)\n", icmp_hdr->type);
+			else if ((icmp_hdr->id != htons(ping->pid)))
+				printf("Received packet with wrong id: %d (expected %d)\n",
+						ntohs(icmp_hdr->id),
+						ping->pid);
+		}
+		return (0);
 	}
 	gettimeofday(&recv_time, NULL);
 	rtt = get_rtt_ms(&ping->send_time, &recv_time);
@@ -116,12 +140,12 @@ static int	receive_ping(t_ping *ping)
 
 static int	run_ping_loop(t_ping *ping)
 {
-	while (1)
+	while (ping->max_count == 0 || ping->current_count < ping->max_count)
 	{
 		if (send_ping(ping) != 0)
 			return (1);
-		if (receive_ping(ping) != 0)
-			return (1);
+		receive_ping(ping);
+		ping->current_count++;
 		sleep(1);
 	}
 	return (0);

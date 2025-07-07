@@ -47,4 +47,7 @@ void	print_ping(t_ping *ping)
 	printf("  sequence: %d\n", ping->sequence);
 	printf("  sent_packets: %d\n", ping->sent_packets);
 	printf("  received_packets: %d\n", ping->received_packets);
+	printf("  packet_size: %d\n", ping->packet_size);
+	printf("  max_count: %d\n", ping->max_count);
+	printf("  current_count: %d\n", ping->current_count);
 }
