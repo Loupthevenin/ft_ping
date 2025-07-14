@@ -2,13 +2,16 @@
 
 int	create_socket(t_ping *ping)
 {
-	ping->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (!ping->sockfd)
+	int	sockfd;
+
+	sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+	if (sockfd == -1)
 	{
 		perror("socket");
 		free_ping(ping);
 		exit(1);
 	}
+	ping->sockfd = sockfd;
 	return (0);
 }
 

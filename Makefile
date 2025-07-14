@@ -44,22 +44,6 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.c
 	@$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 	@printf "$(_GREEN)█$(_END)"
 
-docker-build:
-	@printf "$(_CYAN)Building Docker image...$(_END)\n"
-	docker build -t $(DOCKER_IMAGE) .
-
-docker-run:
-	@printf "$(_CYAN)Launching Docker container...$(_END)\n"
-	docker run --rm -it \
-	--name $(DOCKER_CONTAINER) \
-	-v $(shell pwd):/ft_ping \
-	--cap-add=NET_RAW \
-	--cap-add=NET_ADMIN \
-	--privileged \
-	$(DOCKER_IMAGE) bash
-
-docker: docker-build docker-run
-
 clean:
 	@printf "$(_YELLOW)Removing object files ...$(_END)\n"
 	@$(RM) $(OBJ_DIR)
@@ -78,4 +62,4 @@ leak: CFLAGS += $(DEBUG_FLAGS)
 leak: re
 	@printf "$(_BLUE)Leak check build done$(_END)\n"
 
-.PHONY: all docker clean fclean re debug leak
+.PHONY: all clean fclean re debug leak
